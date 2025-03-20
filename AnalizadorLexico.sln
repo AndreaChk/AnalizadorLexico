@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35913.81 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnalizadorLexico", "AnalizadorLexico\AnalizadorLexico.csproj", "{12C1EF91-9730-48D8-8491-57BC2B486FFE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{12C1EF91-9730-48D8-8491-57BC2B486FFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12C1EF91-9730-48D8-8491-57BC2B486FFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12C1EF91-9730-48D8-8491-57BC2B486FFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12C1EF91-9730-48D8-8491-57BC2B486FFE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E72568F0-5C4A-419E-96B6-7E8E0D869479}
+	EndGlobalSection
+EndGlobal
