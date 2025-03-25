@@ -32,6 +32,8 @@
             label1 = new Label();
             btnAnalizar = new Button();
             lbResumen = new ListBox();
+            dgvTablaSimbolos = new DataGridView();
+            ((System.ComponentModel.ISupportInitialize)dgvTablaSimbolos).BeginInit();
             SuspendLayout();
             // 
             // txtProgramaFuente
@@ -43,7 +45,7 @@
             txtProgramaFuente.Location = new Point(37, 96);
             txtProgramaFuente.Multiline = true;
             txtProgramaFuente.Name = "txtProgramaFuente";
-            txtProgramaFuente.Size = new Size(862, 484);
+            txtProgramaFuente.Size = new Size(705, 484);
             txtProgramaFuente.TabIndex = 0;
             // 
             // label1
@@ -60,11 +62,12 @@
             // btnAnalizar
             // 
             btnAnalizar.BackColor = Color.AliceBlue;
+            btnAnalizar.Cursor = Cursors.Hand;
             btnAnalizar.Font = new Font("Segoe UI", 13.8F, FontStyle.Bold, GraphicsUnit.Point, 0);
             btnAnalizar.ForeColor = Color.DarkBlue;
-            btnAnalizar.Location = new Point(976, 96);
+            btnAnalizar.Location = new Point(854, 96);
             btnAnalizar.Name = "btnAnalizar";
-            btnAnalizar.Size = new Size(124, 42);
+            btnAnalizar.Size = new Size(208, 42);
             btnAnalizar.TabIndex = 2;
             btnAnalizar.Text = "Analizar";
             btnAnalizar.UseVisualStyleBackColor = false;
@@ -75,24 +78,39 @@
             lbResumen.Font = new Font("Cascadia Code", 10.2F, FontStyle.Regular, GraphicsUnit.Point, 0);
             lbResumen.FormattingEnabled = true;
             lbResumen.ItemHeight = 22;
-            lbResumen.Location = new Point(930, 156);
+            lbResumen.Location = new Point(764, 156);
             lbResumen.Name = "lbResumen";
-            lbResumen.Size = new Size(217, 422);
+            lbResumen.Size = new Size(383, 752);
             lbResumen.TabIndex = 3;
+            // 
+            // dgvTablaSimbolos
+            // 
+            dgvTablaSimbolos.AllowUserToDeleteRows = false;
+            dgvTablaSimbolos.BackgroundColor = SystemColors.ControlLightLight;
+            dgvTablaSimbolos.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvTablaSimbolos.Location = new Point(37, 609);
+            dgvTablaSimbolos.Name = "dgvTablaSimbolos";
+            dgvTablaSimbolos.ReadOnly = true;
+            dgvTablaSimbolos.RowHeadersWidth = 51;
+            dgvTablaSimbolos.Size = new Size(705, 306);
+            dgvTablaSimbolos.TabIndex = 4;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.MidnightBlue;
-            ClientSize = new Size(1202, 628);
+            ClientSize = new Size(1202, 948);
+            Controls.Add(dgvTablaSimbolos);
             Controls.Add(lbResumen);
             Controls.Add(btnAnalizar);
             Controls.Add(label1);
             Controls.Add(txtProgramaFuente);
             Name = "Form1";
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "Modula-2";
             Load += Form1_Load;
+            ((System.ComponentModel.ISupportInitialize)dgvTablaSimbolos).EndInit();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -103,5 +121,6 @@
         private Label label1;
         private Button btnAnalizar;
         private ListBox lbResumen;
+        private DataGridView dgvTablaSimbolos;
     }
 }
