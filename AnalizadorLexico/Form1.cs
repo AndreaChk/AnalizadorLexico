@@ -7,6 +7,8 @@ namespace AnalizadorLexico
 {
     public partial class Form1 : Form
     {
+        private List<Token> listaTokensGlobal = new();
+
         public Form1()
         {
             InitializeComponent();
@@ -34,38 +36,26 @@ namespace AnalizadorLexico
 
         private void AnalizarCodigo(string codigo)
         {
-            // Limpiar resultados anteriores
             lbResumen.Items.Clear();
             dgvTablaSimbolos.Rows.Clear();
+            listaTokensGlobal.Clear(); // Limpiar tokens anteriores
 
-            // Lista ordenada de patrones (de más específico a más general)
             var tokenPatterns = new List<TokenPattern>
             {
-                // Comentarios (deben procesarse primero)
-                new TokenPattern("Comentario", @"\(\.?\*\)", RegexOptions.Singleline),
-                
-                // Palabras reservadas
+                new TokenPattern("Comentario", @"\(\*.*?\*\)", RegexOptions.Singleline),
                 new TokenPattern("PalabraReservada", @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT)\b", RegexOptions.IgnoreCase),
-                
-                // Operadores y símbolos
                 new TokenPattern("Asignacion", @":=|:"),
                 new TokenPattern("OpRelacional", @"(=|#|<|<=|>|>=)"),
                 new TokenPattern("OpAritmetico", @"[+\-*/]"),
-                new TokenPattern("Terminador", @"[;]"),
+                new TokenPattern("Terminador", @";|\."),
                 new TokenPattern("Agrupacion", @"[\(\)\[\]\{\}]"),
-                
-                // Literales
-                new TokenPattern("Hexadecimal", @"0x[0-9A-Fa-f]+"),
-                new TokenPattern("Octal", @"0[0-7]+"),
-                new TokenPattern("Real", @"\b\d+\.\d+\b"),
+                new TokenPattern("Hexadecimal", @"\b[0-9A-F]+[Hh]\b"),
+                new TokenPattern("Real", @"\b\d+\.\d+([eE][+-]?\d+)?\b"),
                 new TokenPattern("Entero", @"\b\d+\b"),
-                new TokenPattern("Cadena", @"""([^""\\]|\\.)*"""),
-                
-                // Identificadores (debe ir al final)
-                new TokenPattern("Identificador", @"\b[A-Za-z_][A-Za-z0-9_]*\b")
+                new TokenPattern("Cadena", @"""([^""]|(""""))*"""),
+                new TokenPattern("Identificador", @"\b[A-Za-z][A-Za-z0-9_]*\b")
             };
 
-            // Analizar línea por línea
             string[] lineas = codigo.Split('\n');
             for (int numLinea = 0; numLinea < lineas.Length; numLinea++)
             {
@@ -74,7 +64,6 @@ namespace AnalizadorLexico
 
                 while (posicion < linea.Length)
                 {
-                    // Saltar espacios en blanco
                     if (char.IsWhiteSpace(linea[posicion]))
                     {
                         posicion++;
@@ -83,19 +72,20 @@ namespace AnalizadorLexico
 
                     bool encontrado = false;
 
-                    // Probar cada patrón en orden
                     foreach (var pattern in tokenPatterns)
                     {
                         var match = pattern.Regex.Match(linea, posicion);
                         if (match.Success && match.Index == posicion)
                         {
-                            // Ignorar comentarios
                             if (pattern.Nombre != "Comentario")
                             {
-                                lbResumen.Items.Add($"{match.Value} -> {pattern.Nombre} (Línea {numLinea + 1})");
+                                string valor = match.Value;
+                                string tipo = pattern.Nombre;
+                                lbResumen.Items.Add($"{valor} -> {tipo} (Línea {numLinea + 1})");
 
-                                // Procesar declaraciones VAR
-                                if (pattern.Nombre == "PalabraReservada" && match.Value.Equals("VAR", StringComparison.OrdinalIgnoreCase))
+                                listaTokensGlobal.Add(new Token(tipo, valor, numLinea + 1));
+
+                                if (tipo == "PalabraReservada" && valor.Equals("VAR", StringComparison.OrdinalIgnoreCase))
                                 {
                                     ProcesarDeclaracionesVAR(lineas, numLinea, ref posicion);
                                 }
@@ -118,15 +108,12 @@ namespace AnalizadorLexico
 
         private void ProcesarDeclaracionesVAR(string[] lineas, int numLineaInicial, ref int posicion)
         {
-            // Buscar el bloque de declaraciones VAR
             string lineaActual = lineas[numLineaInicial].Substring(posicion);
 
-            // Continuar hasta encontrar BEGIN o el final
             for (int i = numLineaInicial; i < lineas.Length; i++)
             {
                 string linea = (i == numLineaInicial) ? lineaActual : lineas[i];
 
-                // Buscar declaraciones de variables
                 var declaraciones = Regex.Matches(linea, @"(\w+)\s*:\s*(\w+)(?:\s*:=\s*([^;]+))?\s*;");
                 foreach (Match declaracion in declaraciones)
                 {
@@ -137,16 +124,40 @@ namespace AnalizadorLexico
                     dgvTablaSimbolos.Rows.Add(nombre, tipo, valor, i + 1);
                 }
 
-                // Detectar fin del bloque VAR
                 if (Regex.IsMatch(linea, @"\bBEGIN\b", RegexOptions.IgnoreCase))
                 {
                     break;
                 }
             }
         }
+
+        private void btnAnalizarSintaxis_Click(object sender, EventArgs e)
+        {
+            lbErroresSintacticos.Items.Clear();
+
+            if (listaTokensGlobal.Count == 0)
+            {
+                lbErroresSintacticos.Items.Add("Primero realiza el análisis léxico.");
+                return;
+            }
+
+            var parser = new Parser(listaTokensGlobal);
+            bool correcto = parser.Analizar();
+
+            if (correcto)
+            {
+                lbErroresSintacticos.Items.Add("Análisis sintáctico exitoso.");
+            }
+            else
+            {
+                foreach (var error in parser.ObtenerErrores())
+                {
+                    lbErroresSintacticos.Items.Add(error);
+                }
+            }
+        }
     }
 
-    // Clase auxiliar para manejar patrones de tokens
     public class TokenPattern
     {
         public string Nombre { get; }
