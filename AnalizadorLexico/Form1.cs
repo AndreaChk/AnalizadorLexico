@@ -47,20 +47,22 @@ namespace AnalizadorLexico
 
     // Palabras reservadas (debe ir antes que identificadores)
     new TokenPattern("PalabraReservada",
-        @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT|FOR|TO|REPEAT|UNTIL|CASE|OF)\b",
+        @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|AND|OR|NOT|FOR|TO|REPEAT|UNTIL|CASE|OF)\b",
         RegexOptions.IgnoreCase),
 
     // Operadores y símbolos
     new TokenPattern("Asignacion", @":=|:"), // := debe venir antes que :
     new TokenPattern("OpRelacional", @"(=|#|<|<=|>|>=)"),
-    new TokenPattern("OpAritmetico", @"[+\-*/]"),
+    new TokenPattern("OpAritmetico", @"[+\-*/]|\bDIV\b|\bMOD\b", RegexOptions.IgnoreCase),
     new TokenPattern("Terminador", @";|\."), // ; y .
     new TokenPattern("Agrupacion", @"[\(\)\[\]\{\}]"),
+    new TokenPattern("Separador", @","),
 
     // Literales
     new TokenPattern("Hexadecimal", @"\b[0-9A-F]+[Hh]\b"),
     new TokenPattern("Real", @"\b\d+\.\d+([eE][+-]?\d+)?\b"),
     new TokenPattern("Entero", @"\b\d+\b"),
+    new TokenPattern("Caracter", @"'[A-Za-z0-9]'"),
     new TokenPattern("Cadena", @"""([^""]|(""""))*"""),
 
     // Identificadores (va hasta el final para no interceptar palabras reservadas)

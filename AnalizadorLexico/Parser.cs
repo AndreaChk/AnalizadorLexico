@@ -162,8 +162,22 @@ namespace AnalizadorLexico
         {
             var nodo = new Arbol("Declaracion");
 
-            Identificador();
-            nodo.Hijos.Add(new Arbol("Identificador"));
+            // Lista de identificadores separados por comas
+            do
+            {
+                Identificador();
+                nodo.Hijos.Add(new Arbol("Identificador"));
+
+                if (Actual != null && Actual.Tipo == "Separador" && Actual.Valor == ",")
+                {
+                    Avanzar(); // Consumir la coma
+                }
+                else
+                {
+                    break; // Salir si no hay más comas
+                }
+
+            } while (Actual != null && Actual.Tipo == "Identificador");
 
             Esperar("Asignacion", ":");
             nodo.Hijos.Add(new Arbol(":"));
@@ -187,7 +201,9 @@ namespace AnalizadorLexico
                 bool esSentenciaValida =
                     Actual.Tipo == "Identificador" ||
                     (Actual.Tipo == "PalabraReservada" &&
-                     (valor == "IF" || valor == "FOR" || valor == "WHILE" || valor == "REPEAT" || valor == "CASE"));
+                     (valor == "IF" || valor == "FOR" || valor == "WHILE" ||
+                      valor == "REPEAT" || valor == "CASE" ||
+                      valor == "LOOP" || valor == "EXIT"));
 
                 if (!esSentenciaValida)
                     break;
@@ -199,6 +215,23 @@ namespace AnalizadorLexico
         }
 
 
+        private Arbol LoopSentencia()
+        {
+            var nodo = new Arbol("LOOP");
+
+            Esperar("PalabraReservada", "LOOP");
+            nodo.Hijos.Add(new Arbol("LOOP"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
 
         private Arbol Sentencia()
         {
@@ -241,9 +274,27 @@ namespace AnalizadorLexico
                     return nodo;
                 }
 
-                // Puedes agregar aquí WHILE, LOOP, etc.
+                if (palabra == "LOOP")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(LoopSentencia());
+                    return nodo;
+                }
+
+                if (palabra == "EXIT")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    Esperar("PalabraReservada", "EXIT");
+                    nodo.Hijos.Add(new Arbol("EXIT"));
+
+                    Esperar("Terminador", ";");
+                    nodo.Hijos.Add(new Arbol(";"));
+
+                    return nodo;
+                }
             }
 
+            // Sentencia simple (asignación)
             var nodoSimple = new Arbol("Sentencia");
 
             Identificador();
@@ -383,7 +434,6 @@ namespace AnalizadorLexico
             {
                 Esperar("PalabraReservada", "ELSE");
                 var elseNodo = new Arbol("ELSE");
-
                 elseNodo.Hijos.Add(Sentencias());
                 nodo.Hijos.Add(elseNodo);
             }
@@ -396,6 +446,7 @@ namespace AnalizadorLexico
 
             return nodo;
         }
+
 
 
         private Arbol ForSentencia()
@@ -484,18 +535,65 @@ namespace AnalizadorLexico
 
         private Arbol Expresion()
         {
+            return ParseOr();
+        }
+
+        // OR tiene la menor precedencia
+        private Arbol ParseOr()
+        {
+            var nodo = ParseAnd();
+
+            while (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "OR")
+            {
+                var operador = new Arbol("OR");
+                Avanzar();
+                operador.Hijos.Add(nodo);
+                operador.Hijos.Add(ParseAnd());
+                nodo = operador;
+            }
+
+            return nodo;
+        }
+
+        private Arbol ParseAnd()
+        {
+            var nodo = ParseNot();
+
+            while (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "AND")
+            {
+                var operador = new Arbol("AND");
+                Avanzar();
+                operador.Hijos.Add(nodo);
+                operador.Hijos.Add(ParseNot());
+                nodo = operador;
+            }
+
+            return nodo;
+        }
+
+        private Arbol ParseNot()
+        {
+            if (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "NOT")
+            {
+                var operador = new Arbol("NOT");
+                Avanzar();
+                operador.Hijos.Add(ParseRelacional());
+                return operador;
+            }
+
+            return ParseRelacional();
+        }
+
+        private Arbol ParseRelacional()
+        {
             var izquierda = ParseExpresionAritmetica();
 
-            // Si viene un operador relacional, procesarlo
             if (Actual != null && Actual.Tipo == "OpRelacional")
             {
                 var operador = new Arbol(Actual.Valor);
                 Avanzar();
-
-                var derecha = ParseExpresionAritmetica();
-
                 operador.Hijos.Add(izquierda);
-                operador.Hijos.Add(derecha);
+                operador.Hijos.Add(ParseExpresionAritmetica());
                 return operador;
             }
 
@@ -519,13 +617,12 @@ namespace AnalizadorLexico
             return nodo;
         }
 
-
         private Arbol ParseTermino()
         {
             var nodo = ParseFactor();
 
             while (Actual != null && Actual.Tipo == "OpAritmetico" &&
-                  (Actual.Valor == "*" || Actual.Valor == "/"))
+                  (Actual.Valor == "*" || Actual.Valor == "/" || Actual.Valor.ToUpper() == "DIV" || Actual.Valor.ToUpper() == "MOD"))
             {
                 var operador = new Arbol(Actual.Valor);
                 Avanzar();
@@ -547,7 +644,7 @@ namespace AnalizadorLexico
                 return nodo;
             }
 
-            if (Actual.Tipo == "Entero" || Actual.Tipo == "Real" || Actual.Tipo == "Identificador")
+            if (Actual.Tipo == "Entero" || Actual.Tipo == "Real" || Actual.Tipo == "Caracter" || Actual.Tipo == "Identificador")
             {
                 nodo.Hijos.Add(new Arbol(Actual.Valor));
                 Avanzar();
@@ -555,7 +652,7 @@ namespace AnalizadorLexico
             else if (Actual.Valor == "(")
             {
                 Avanzar(); // consumir '('
-                nodo = ParseExpresionAritmetica();
+                nodo = Expresion(); // usar Expresion completa, no solo aritmética
 
                 if (Actual != null && Actual.Valor == ")")
                 {
@@ -576,10 +673,14 @@ namespace AnalizadorLexico
         }
 
 
+
         private void Tipo()
         {
             if (Actual != null && Actual.Tipo == "PalabraReservada" &&
-                (Actual.Valor.ToUpper() == "INTEGER" || Actual.Valor.ToUpper() == "REAL" || Actual.Valor.ToUpper() == "BOOLEAN"))
+                (Actual.Valor.ToUpper() == "INTEGER" ||
+                 Actual.Valor.ToUpper() == "REAL" ||
+                 Actual.Valor.ToUpper() == "BOOLEAN" ||
+                 Actual.Valor.ToUpper() == "CHAR"))
             {
                 Avanzar();
             }
@@ -588,6 +689,7 @@ namespace AnalizadorLexico
                 errores.Add($"Tipo no válido en línea {Actual?.Linea ?? ultimaLinea}");
                 Avanzar();
             }
+
         }
 
         private void Identificador()
