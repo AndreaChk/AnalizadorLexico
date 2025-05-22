@@ -14,6 +14,9 @@ namespace AnalizadorLexico
         private int indice = 0;
         private Token Actual => indice < tokens.Count ? tokens[indice] : null;
         private List<string> errores = new();
+        private int ultimaLinea = 1;
+
+        public Arbol Arbol { get; private set; }
 
         public Parser(List<Token> tokens)
         {
@@ -22,74 +25,133 @@ namespace AnalizadorLexico
 
         public bool Analizar()
         {
-            Programa();
+            Arbol = Programa();
             return errores.Count == 0;
         }
 
         public List<string> ObtenerErrores() => errores;
 
-        private void Programa()
+        private Arbol Programa()
         {
+            var nodo = new Arbol("Programa");
+
             Esperar("PalabraReservada", "MODULE");
+            nodo.Hijos.Add(new Arbol("MODULE"));
+
             Identificador();
+            nodo.Hijos.Add(new Arbol("Identificador"));
+
             Esperar("Terminador", ";");
-            Bloque();
+            nodo.Hijos.Add(new Arbol(";"));
+
+            nodo.Hijos.Add(Bloque());
+
             Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
             Identificador();
+            nodo.Hijos.Add(new Arbol("Identificador"));
+
             Esperar("Terminador", ".");
+            nodo.Hijos.Add(new Arbol("."));
+
+            return nodo;
         }
 
-        private void Bloque()
+        private Arbol Bloque()
         {
-            Declaraciones();
+            var nodo = new Arbol("Bloque");
+
+            nodo.Hijos.Add(Declaraciones());
+
             Esperar("PalabraReservada", "BEGIN");
-            Sentencias();
+            nodo.Hijos.Add(new Arbol("BEGIN"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            return nodo;
         }
 
-        private void Declaraciones()
+        private Arbol Declaraciones()
         {
+            var nodo = new Arbol("Declaraciones");
+
             Esperar("PalabraReservada", "VAR");
+            nodo.Hijos.Add(new Arbol("VAR"));
+
             while (Actual != null && Actual.Tipo == "Identificador")
             {
-                Declaracion();
+                nodo.Hijos.Add(Declaracion());
             }
+
+            return nodo;
         }
 
-        private void Declaracion()
+        private Arbol Declaracion()
         {
+            var nodo = new Arbol("Declaracion");
+
             Identificador();
+            nodo.Hijos.Add(new Arbol("Identificador"));
+
             Esperar("Asignacion", ":");
+            nodo.Hijos.Add(new Arbol(":"));
+
             Tipo();
+            nodo.Hijos.Add(new Arbol("Tipo"));
+
             Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
         }
 
-        private void Sentencias()
+        private Arbol Sentencias()
         {
+            var nodo = new Arbol("Sentencias");
+
             while (Actual != null && Actual.Tipo == "Identificador")
             {
-                Sentencia();
+                nodo.Hijos.Add(Sentencia());
             }
+
+            return nodo;
         }
 
-        private void Sentencia()
+        private Arbol Sentencia()
         {
+            var nodo = new Arbol("Sentencia");
+
             Identificador();
+            nodo.Hijos.Add(new Arbol("Identificador"));
+
             Esperar("Asignacion", ":=");
-            Expresion();
+            nodo.Hijos.Add(new Arbol(":="));
+
+            nodo.Hijos.Add(Expresion());
+
             Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
         }
 
-        private void Expresion()
+        private Arbol Expresion()
         {
+            var nodo = new Arbol("Expresion");
+
             if (Actual != null && (Actual.Tipo == "Entero" || Actual.Tipo == "Identificador"))
             {
+                nodo.Hijos.Add(new Arbol(Actual.Valor));
                 Avanzar();
             }
             else
             {
-                errores.Add($"Se esperaba número o identificador en línea {Actual?.Linea ?? 0}");
+                errores.Add($"Se esperaba número o identificador en línea {Actual?.Linea ?? ultimaLinea}");
                 Avanzar();
             }
+
+            return nodo;
         }
 
         private void Tipo()
@@ -101,7 +163,7 @@ namespace AnalizadorLexico
             }
             else
             {
-                errores.Add($"Tipo no válido en línea {Actual?.Linea ?? 0}");
+                errores.Add($"Tipo no válido en línea {Actual?.Linea ?? ultimaLinea}");
                 Avanzar();
             }
         }
@@ -112,7 +174,7 @@ namespace AnalizadorLexico
                 Avanzar();
             else
             {
-                errores.Add($"Se esperaba identificador en línea {Actual?.Linea ?? 0}");
+                errores.Add($"Se esperaba identificador en línea {Actual?.Linea ?? ultimaLinea}");
                 Avanzar();
             }
         }
@@ -126,12 +188,17 @@ namespace AnalizadorLexico
             }
             else
             {
-                errores.Add($"Error de sintaxis: se esperaba {valorEsperado ?? tipoEsperado} en línea {Actual?.Linea ?? 0}");
+                errores.Add($"Error de sintaxis: se esperaba {valorEsperado ?? tipoEsperado} en línea {Actual?.Linea ?? ultimaLinea}");
                 Avanzar();
             }
         }
 
-        private void Avanzar() => indice++;
+        private void Avanzar()
+        {
+            if (Actual != null)
+                ultimaLinea = Actual.Linea;
+
+            indice++;
+        }
     }
 }
-

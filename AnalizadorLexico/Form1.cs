@@ -131,7 +131,7 @@ namespace AnalizadorLexico
             }
         }
 
-        private void btnAnalizarSintaxis_Click(object sender, EventArgs e)
+        private void btnAnalizarSintaxis_Click_1(object sender, EventArgs e)
         {
             lbErroresSintacticos.Items.Clear();
 
@@ -155,6 +155,11 @@ namespace AnalizadorLexico
                     lbErroresSintacticos.Items.Add(error);
                 }
             }
+
+            tvArbolSintactico.Nodes.Clear();
+            tvArbolSintactico.Nodes.Add(parser.Arbol.ToTreeNode());
+            tvArbolSintactico.ExpandAll();
+
         }
     }
 
