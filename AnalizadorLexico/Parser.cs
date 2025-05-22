@@ -62,7 +62,19 @@ namespace AnalizadorLexico
         {
             var nodo = new Arbol("Bloque");
 
-            nodo.Hijos.Add(Declaraciones());
+            // Soporte para múltiples procedimientos antes del cuerpo principal
+            while (Actual != null && Actual.Tipo == "PalabraReservada" &&
+                   Actual.Valor.ToUpper() == "PROCEDURE")
+            {
+                nodo.Hijos.Add(Procedure());
+            }
+
+            // Declaraciones VAR
+            if (Actual != null && Actual.Tipo == "PalabraReservada" &&
+                Actual.Valor.ToUpper() == "VAR")
+            {
+                nodo.Hijos.Add(Declaraciones());
+            }
 
             Esperar("PalabraReservada", "BEGIN");
             nodo.Hijos.Add(new Arbol("BEGIN"));
@@ -71,6 +83,55 @@ namespace AnalizadorLexico
 
             return nodo;
         }
+
+        private Arbol Procedure()
+        {
+            var nodo = new Arbol("PROCEDURE");
+
+            Esperar("PalabraReservada", "PROCEDURE");
+            nodo.Hijos.Add(new Arbol("PROCEDURE"));
+
+            // Nombre del procedimiento
+            string nombreProc = Actual?.Valor;
+            Identificador();
+            nodo.Hijos.Add(new Arbol("Identificador"));
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            // Declaraciones internas del procedimiento
+            if (Actual != null && Actual.Tipo == "PalabraReservada" &&
+                Actual.Valor.ToUpper() == "VAR")
+            {
+                nodo.Hijos.Add(Declaraciones());
+            }
+
+            Esperar("PalabraReservada", "BEGIN");
+            nodo.Hijos.Add(new Arbol("BEGIN"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
+            // Validación opcional: el nombre debe coincidir
+            if (Actual != null && Actual.Tipo == "Identificador" && Actual.Valor == nombreProc)
+            {
+                Identificador();
+                nodo.Hijos.Add(new Arbol("Identificador"));
+            }
+            else
+            {
+                errores.Add($"Error: se esperaba el identificador '{nombreProc}' después de END en línea {Actual?.Linea ?? ultimaLinea}");
+                Avanzar();
+            }
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
+
 
         private Arbol Declaraciones()
         {
@@ -149,6 +210,13 @@ namespace AnalizadorLexico
                     return nodo;
                 }
 
+                if (palabra == "WHILE")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(WhileSentencia());
+                    return nodo;
+                }
+
                 // Puedes agregar aquí WHILE, LOOP, etc.
             }
 
@@ -168,6 +236,30 @@ namespace AnalizadorLexico
             return nodoSimple;
         }
 
+
+
+        private Arbol WhileSentencia()
+        {
+            var nodo = new Arbol("WHILE");
+
+            Esperar("PalabraReservada", "WHILE");
+            nodo.Hijos.Add(new Arbol("WHILE"));
+
+            nodo.Hijos.Add(Expresion());
+
+            Esperar("PalabraReservada", "DO");
+            nodo.Hijos.Add(new Arbol("DO"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
 
 
 
