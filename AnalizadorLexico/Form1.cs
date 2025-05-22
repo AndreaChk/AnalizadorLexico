@@ -47,7 +47,7 @@ namespace AnalizadorLexico
 
     // Palabras reservadas (debe ir antes que identificadores)
     new TokenPattern("PalabraReservada",
-        @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT|FOR|TO)\b",
+        @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT|FOR|TO|REPEAT|UNTIL|CASE|OF)\b",
         RegexOptions.IgnoreCase),
 
     // Operadores y símbolos

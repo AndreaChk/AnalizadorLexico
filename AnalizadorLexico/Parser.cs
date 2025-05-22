@@ -62,20 +62,28 @@ namespace AnalizadorLexico
         {
             var nodo = new Arbol("Bloque");
 
-            // Soporte para múltiples procedimientos antes del cuerpo principal
+            // 📌 Bloque CONST (opcional)
+            if (Actual != null && Actual.Tipo == "PalabraReservada" &&
+                Actual.Valor.ToUpper() == "CONST")
+            {
+                nodo.Hijos.Add(Constantes());
+            }
+
+            // 📌 Múltiples PROCEDUREs (opcional antes del cuerpo principal)
             while (Actual != null && Actual.Tipo == "PalabraReservada" &&
                    Actual.Valor.ToUpper() == "PROCEDURE")
             {
                 nodo.Hijos.Add(Procedure());
             }
 
-            // Declaraciones VAR
+            // 📌 Declaraciones VAR (opcional)
             if (Actual != null && Actual.Tipo == "PalabraReservada" &&
                 Actual.Valor.ToUpper() == "VAR")
             {
                 nodo.Hijos.Add(Declaraciones());
             }
 
+            // 📌 Bloque principal de ejecución
             Esperar("PalabraReservada", "BEGIN");
             nodo.Hijos.Add(new Arbol("BEGIN"));
 
@@ -83,6 +91,8 @@ namespace AnalizadorLexico
 
             return nodo;
         }
+
+
 
         private Arbol Procedure()
         {
@@ -177,7 +187,7 @@ namespace AnalizadorLexico
                 bool esSentenciaValida =
                     Actual.Tipo == "Identificador" ||
                     (Actual.Tipo == "PalabraReservada" &&
-                     (valor == "IF" || valor == "FOR" || valor == "WHILE"));
+                     (valor == "IF" || valor == "FOR" || valor == "WHILE" || valor == "REPEAT" || valor == "CASE"));
 
                 if (!esSentenciaValida)
                     break;
@@ -217,6 +227,20 @@ namespace AnalizadorLexico
                     return nodo;
                 }
 
+                if (palabra == "REPEAT")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(RepeatSentencia());
+                    return nodo;
+                }
+
+                if (palabra == "CASE")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(CaseSentencia());
+                    return nodo;
+                }
+
                 // Puedes agregar aquí WHILE, LOOP, etc.
             }
 
@@ -234,6 +258,67 @@ namespace AnalizadorLexico
             nodoSimple.Hijos.Add(new Arbol(";"));
 
             return nodoSimple;
+        }
+
+
+        private Arbol RepeatSentencia()
+        {
+            var nodo = new Arbol("REPEAT");
+
+            Esperar("PalabraReservada", "REPEAT");
+            nodo.Hijos.Add(new Arbol("REPEAT"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            Esperar("PalabraReservada", "UNTIL");
+            nodo.Hijos.Add(new Arbol("UNTIL"));
+
+            nodo.Hijos.Add(Expresion());
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
+
+
+
+        private Arbol Constantes()
+        {
+            var nodo = new Arbol("Constantes");
+
+            Esperar("PalabraReservada", "CONST");
+            nodo.Hijos.Add(new Arbol("CONST"));
+
+            while (Actual != null && Actual.Tipo == "Identificador")
+            {
+                var declaracion = new Arbol("Constante");
+
+                Identificador();
+                declaracion.Hijos.Add(new Arbol("Identificador"));
+
+                Esperar("OpRelacional", "=");
+                declaracion.Hijos.Add(new Arbol("="));
+
+                if (Actual != null &&
+                    (Actual.Tipo == "Entero" || Actual.Tipo == "Real" || Actual.Tipo == "Cadena"))
+                {
+                    declaracion.Hijos.Add(new Arbol(Actual.Valor));
+                    Avanzar();
+                }
+                else
+                {
+                    errores.Add($"Se esperaba un valor constante en línea {Actual?.Linea ?? ultimaLinea}");
+                    Avanzar();
+                }
+
+                Esperar("Terminador", ";");
+                declaracion.Hijos.Add(new Arbol(";"));
+
+                nodo.Hijos.Add(declaracion);
+            }
+
+            return nodo;
         }
 
 
@@ -348,21 +433,143 @@ namespace AnalizadorLexico
         }
 
 
+        private Arbol CaseSentencia()
+        {
+            var nodo = new Arbol("CASE");
+
+            Esperar("PalabraReservada", "CASE");
+            nodo.Hijos.Add(new Arbol("CASE"));
+
+            nodo.Hijos.Add(Expresion());
+
+            Esperar("PalabraReservada", "OF");
+            nodo.Hijos.Add(new Arbol("OF"));
+
+            // Manejar cada alternativa (por ejemplo: 1: sentencia;)
+            while (Actual != null && (Actual.Tipo == "Entero" || Actual.Tipo == "Cadena"))
+            {
+                var alternativa = new Arbol("Alternativa");
+
+                alternativa.Hijos.Add(new Arbol(Actual.Valor)); // valor constante
+                Avanzar();
+
+                Esperar("Asignacion", ":");
+                alternativa.Hijos.Add(new Arbol(":"));
+
+                alternativa.Hijos.Add(Sentencia());
+
+                nodo.Hijos.Add(alternativa);
+            }
+
+            // ELSE opcional
+            if (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "ELSE")
+            {
+                var elseNodo = new Arbol("ELSE");
+
+                Esperar("PalabraReservada", "ELSE");
+                elseNodo.Hijos.Add(Sentencias());
+
+                nodo.Hijos.Add(elseNodo);
+            }
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
 
 
         private Arbol Expresion()
         {
-            var nodo = new Arbol("Expresion");
+            var izquierda = ParseExpresionAritmetica();
 
-            if (Actual != null && (Actual.Tipo == "Entero" || Actual.Tipo == "Identificador"))
+            // Si viene un operador relacional, procesarlo
+            if (Actual != null && Actual.Tipo == "OpRelacional")
+            {
+                var operador = new Arbol(Actual.Valor);
+                Avanzar();
+
+                var derecha = ParseExpresionAritmetica();
+
+                operador.Hijos.Add(izquierda);
+                operador.Hijos.Add(derecha);
+                return operador;
+            }
+
+            return izquierda;
+        }
+
+        private Arbol ParseExpresionAritmetica()
+        {
+            var nodo = ParseTermino();
+
+            while (Actual != null && Actual.Tipo == "OpAritmetico" &&
+                  (Actual.Valor == "+" || Actual.Valor == "-"))
+            {
+                var operador = new Arbol(Actual.Valor);
+                Avanzar();
+                operador.Hijos.Add(nodo);
+                operador.Hijos.Add(ParseTermino());
+                nodo = operador;
+            }
+
+            return nodo;
+        }
+
+
+        private Arbol ParseTermino()
+        {
+            var nodo = ParseFactor();
+
+            while (Actual != null && Actual.Tipo == "OpAritmetico" &&
+                  (Actual.Valor == "*" || Actual.Valor == "/"))
+            {
+                var operador = new Arbol(Actual.Valor);
+                Avanzar();
+                operador.Hijos.Add(nodo);
+                operador.Hijos.Add(ParseFactor());
+                nodo = operador;
+            }
+
+            return nodo;
+        }
+
+        private Arbol ParseFactor()
+        {
+            var nodo = new Arbol("Factor");
+
+            if (Actual == null)
+            {
+                errores.Add("Se esperaba un factor pero no hay más tokens.");
+                return nodo;
+            }
+
+            if (Actual.Tipo == "Entero" || Actual.Tipo == "Real" || Actual.Tipo == "Identificador")
             {
                 nodo.Hijos.Add(new Arbol(Actual.Valor));
                 Avanzar();
             }
+            else if (Actual.Valor == "(")
+            {
+                Avanzar(); // consumir '('
+                nodo = ParseExpresionAritmetica();
+
+                if (Actual != null && Actual.Valor == ")")
+                {
+                    Avanzar(); // consumir ')'
+                }
+                else
+                {
+                    errores.Add($"Se esperaba ')' en línea {Actual?.Linea ?? ultimaLinea}");
+                }
+            }
             else
             {
-                errores.Add($"Se esperaba número o identificador en línea {Actual?.Linea ?? ultimaLinea}");
-                Avanzar(); // para que no se quede trabado
+                errores.Add($"Token inesperado '{Actual.Valor}' en línea {Actual.Linea}");
+                Avanzar();
             }
 
             return nodo;
