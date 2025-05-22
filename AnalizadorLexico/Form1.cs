@@ -42,19 +42,31 @@ namespace AnalizadorLexico
 
             var tokenPatterns = new List<TokenPattern>
             {
-                new TokenPattern("Comentario", @"\(\*.*?\*\)", RegexOptions.Singleline),
-                new TokenPattern("PalabraReservada", @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT)\b", RegexOptions.IgnoreCase),
-                new TokenPattern("Asignacion", @":=|:"),
-                new TokenPattern("OpRelacional", @"(=|#|<|<=|>|>=)"),
-                new TokenPattern("OpAritmetico", @"[+\-*/]"),
-                new TokenPattern("Terminador", @";|\."),
-                new TokenPattern("Agrupacion", @"[\(\)\[\]\{\}]"),
-                new TokenPattern("Hexadecimal", @"\b[0-9A-F]+[Hh]\b"),
-                new TokenPattern("Real", @"\b\d+\.\d+([eE][+-]?\d+)?\b"),
-                new TokenPattern("Entero", @"\b\d+\b"),
-                new TokenPattern("Cadena", @"""([^""]|(""""))*"""),
-                new TokenPattern("Identificador", @"\b[A-Za-z][A-Za-z0-9_]*\b")
-            };
+// Comentarios
+    new TokenPattern("Comentario", @"\(\*.*?\*\)", RegexOptions.Singleline),
+
+    // Palabras reservadas (debe ir antes que identificadores)
+    new TokenPattern("PalabraReservada",
+        @"\b(MODULE|BEGIN|END|VAR|CONST|PROCEDURE|INTEGER|REAL|CHAR|BOOLEAN|WHILE|DO|IF|THEN|ELSE|ELSIF|LOOP|EXIT|DIV|MOD|AND|OR|NOT|FOR|TO)\b",
+        RegexOptions.IgnoreCase),
+
+    // Operadores y símbolos
+    new TokenPattern("Asignacion", @":=|:"), // := debe venir antes que :
+    new TokenPattern("OpRelacional", @"(=|#|<|<=|>|>=)"),
+    new TokenPattern("OpAritmetico", @"[+\-*/]"),
+    new TokenPattern("Terminador", @";|\."), // ; y .
+    new TokenPattern("Agrupacion", @"[\(\)\[\]\{\}]"),
+
+    // Literales
+    new TokenPattern("Hexadecimal", @"\b[0-9A-F]+[Hh]\b"),
+    new TokenPattern("Real", @"\b\d+\.\d+([eE][+-]?\d+)?\b"),
+    new TokenPattern("Entero", @"\b\d+\b"),
+    new TokenPattern("Cadena", @"""([^""]|(""""))*"""),
+
+    // Identificadores (va hasta el final para no interceptar palabras reservadas)
+    new TokenPattern("Identificador", @"\b[A-Za-z][A-Za-z0-9_]*\b")
+};
+
 
             string[] lineas = codigo.Split('\n');
             for (int numLinea = 0; numLinea < lineas.Length; numLinea++)

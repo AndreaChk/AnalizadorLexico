@@ -110,17 +110,123 @@ namespace AnalizadorLexico
         {
             var nodo = new Arbol("Sentencias");
 
-            while (Actual != null && Actual.Tipo == "Identificador")
+            while (Actual != null)
             {
+                string valor = Actual.Valor.ToUpper();
+                bool esSentenciaValida =
+                    Actual.Tipo == "Identificador" ||
+                    (Actual.Tipo == "PalabraReservada" &&
+                     (valor == "IF" || valor == "FOR" || valor == "WHILE"));
+
+                if (!esSentenciaValida)
+                    break;
+
                 nodo.Hijos.Add(Sentencia());
             }
 
             return nodo;
         }
 
+
+
         private Arbol Sentencia()
         {
-            var nodo = new Arbol("Sentencia");
+            if (Actual != null && Actual.Tipo == "PalabraReservada")
+            {
+                string palabra = Actual.Valor.ToUpper();
+
+                if (palabra == "IF")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(IfSentencia());
+                    return nodo;
+                }
+
+                if (palabra == "FOR")
+                {
+                    var nodo = new Arbol("Sentencia");
+                    nodo.Hijos.Add(ForSentencia());
+                    return nodo;
+                }
+
+                // Puedes agregar aquí WHILE, LOOP, etc.
+            }
+
+            var nodoSimple = new Arbol("Sentencia");
+
+            Identificador();
+            nodoSimple.Hijos.Add(new Arbol("Identificador"));
+
+            Esperar("Asignacion", ":=");
+            nodoSimple.Hijos.Add(new Arbol(":="));
+
+            nodoSimple.Hijos.Add(Expresion());
+
+            Esperar("Terminador", ";");
+            nodoSimple.Hijos.Add(new Arbol(";"));
+
+            return nodoSimple;
+        }
+
+
+
+
+        private Arbol IfSentencia()
+        {
+            var nodo = new Arbol("IF");
+
+            Esperar("PalabraReservada", "IF");
+            nodo.Hijos.Add(new Arbol("IF"));
+
+            nodo.Hijos.Add(Expresion());
+
+            Esperar("PalabraReservada", "THEN");
+            nodo.Hijos.Add(new Arbol("THEN"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            while (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "ELSIF")
+            {
+                var elsif = new Arbol("ELSIF");
+
+                Esperar("PalabraReservada", "ELSIF");
+                elsif.Hijos.Add(new Arbol("ELSIF"));
+
+                elsif.Hijos.Add(Expresion());
+
+                Esperar("PalabraReservada", "THEN");
+                elsif.Hijos.Add(new Arbol("THEN"));
+
+                elsif.Hijos.Add(Sentencias());
+
+                nodo.Hijos.Add(elsif);
+            }
+
+            if (Actual != null && Actual.Tipo == "PalabraReservada" && Actual.Valor.ToUpper() == "ELSE")
+            {
+                Esperar("PalabraReservada", "ELSE");
+                var elseNodo = new Arbol("ELSE");
+
+                elseNodo.Hijos.Add(Sentencias());
+                nodo.Hijos.Add(elseNodo);
+            }
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
+            Esperar("Terminador", ";");
+            nodo.Hijos.Add(new Arbol(";"));
+
+            return nodo;
+        }
+
+
+        private Arbol ForSentencia()
+        {
+            var nodo = new Arbol("FOR");
+
+            Esperar("PalabraReservada", "FOR");
+            nodo.Hijos.Add(new Arbol("FOR"));
 
             Identificador();
             nodo.Hijos.Add(new Arbol("Identificador"));
@@ -130,11 +236,27 @@ namespace AnalizadorLexico
 
             nodo.Hijos.Add(Expresion());
 
+            Esperar("PalabraReservada", "TO");
+            nodo.Hijos.Add(new Arbol("TO"));
+
+            nodo.Hijos.Add(Expresion());
+
+            Esperar("PalabraReservada", "DO");
+            nodo.Hijos.Add(new Arbol("DO"));
+
+            nodo.Hijos.Add(Sentencias());
+
+            Esperar("PalabraReservada", "END");
+            nodo.Hijos.Add(new Arbol("END"));
+
             Esperar("Terminador", ";");
             nodo.Hijos.Add(new Arbol(";"));
 
             return nodo;
         }
+
+
+
 
         private Arbol Expresion()
         {
@@ -148,11 +270,12 @@ namespace AnalizadorLexico
             else
             {
                 errores.Add($"Se esperaba número o identificador en línea {Actual?.Linea ?? ultimaLinea}");
-                Avanzar();
+                Avanzar(); // para que no se quede trabado
             }
 
             return nodo;
         }
+
 
         private void Tipo()
         {
